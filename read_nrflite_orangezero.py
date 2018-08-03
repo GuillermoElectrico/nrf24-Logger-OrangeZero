@@ -3,7 +3,6 @@
 from influxdb import InfluxDBClient
 from datetime import datetime, timedelta
 from os import path
-import OPi.GPIO as GPIO # to install "pip3 install --upgrade OPi.GPIO"
 import sys
 import os
 import time
@@ -11,10 +10,11 @@ import yaml
 import logging
 import subprocess
 import smbus
-GPIO.setmode(GPIO.BOARD)
 
-bus = smbus.SMBus(1)
-address = 0x10
+bus = smbus.SMBus(1)  # Puerto i2c-1 auxiliar de la Orange Pi Zero H2
+address = 0x10        # Dirección por defecto esclavo
+#channel = 100		  # 0-125 (2400 - 2525 MHz)
+#bitrate = 2		  # 2 => BITRATE2MBPS, 1 => BITRATE1MBPS, 0 = > BITRATE250KBPS
 
 # Change working dir to the same dir as this script
 os.chdir(sys.path[0])
@@ -27,7 +27,11 @@ class DataCollector:
     def collect_and_store(self):
         t_utc = datetime.utcnow()
         t_str = t_utc.isoformat() + 'Z'
- 
+
+        # Config remote device
+        #bus.write_i2c_block_data(address, 'b', [bitrate, 'c', channel])
+        #time.sleep(10)                    #delay ten seconds to reboot remote device
+
         save = False
         datas = dict()
 
@@ -36,16 +40,17 @@ class DataCollector:
             start_time = time.time()
 
 
-            statusRF24 = bus.read_byte_data(address, 12)
+            statusRF24 = bus.read_byte_data(address, 16)
             if statusRF24 != statusRF24old
                 statusRF24old = statusRF24
                 save = True
-                RadioPacket = unpack('BcBll', statusRF24)
+                RadioPacket = unpack('BcBlfl', statusRF24)
                 datas['FromRadioId'] = RadioPacket[0]
                 datas['DataType'] = RadioPacket[1]
                 datas['InputNumber'] = RadioPacket[2]
-                datas['RadioData'] = RadioPacket[3]
-                datas['FailedTxCount'] = RadioPacket[4]
+                datas['RadioDataLong'] = RadioPacket[3]
+                datas['RadioDataFloat'] = RadioPacket[4]
+                datas['FailedTxCount'] = RadioPacket[5]
 
 			
             datas['ReadTime'] =  time.time() - start_time
