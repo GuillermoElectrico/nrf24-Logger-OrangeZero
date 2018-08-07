@@ -59,7 +59,7 @@ class DataCollector:
                 save = False
                 json_body = [
                     {
-                        'measurement': 'LocalInputsLog',
+                        'measurement': 'nrfliteLog',
                         'tags': {
                             'id': nrflite_id,
                         },
