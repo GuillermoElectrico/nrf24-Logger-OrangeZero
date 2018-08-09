@@ -39,12 +39,11 @@ class DataCollector:
         while:
             start_time = time.time()
 
-
             statusRF24 = bus.read_byte_data(address, 16)
             if statusRF24 != statusRF24old
                 statusRF24old = statusRF24
                 save = True
-                RadioPacket = unpack('BcBlfl', statusRF24)
+                RadioPacket = unpack('BcBlfL', statusRF24)
                 datas['FromRadioId'] = RadioPacket[0]
                 datas['DataType'] = RadioPacket[1]
                 datas['InputNumber'] = RadioPacket[2]
