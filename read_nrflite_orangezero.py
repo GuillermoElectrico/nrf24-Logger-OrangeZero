@@ -9,10 +9,10 @@ import time
 import yaml
 import logging
 import subprocess
-import smbus
+from smbus2 import SMBus
 
-bus = smbus.SMBus(1)  # Puerto i2c-1 auxiliar de la Orange Pi Zero H2
-address = 0x10        # Dirección por defecto esclavo
+bus = SMBus(1)  # Puerto i2c-1 auxiliar de la Orange Pi Zero H2
+address = 0x05        # Dirección por defecto esclavo 10 en decimal
 #channel = 100		  # 0-125 (2400 - 2525 MHz)
 #bitrate = 2		  # 2 => BITRATE2MBPS, 1 => BITRATE1MBPS, 0 = > BITRATE250KBPS
 
@@ -20,7 +20,7 @@ address = 0x10        # Dirección por defecto esclavo
 os.chdir(sys.path[0])
 
 class DataCollector:
-    def __init__(self, influx_client, inputspins_yaml):
+    def __init__(self, influx_client):
         self.influx_client = influx_client
         self.max_iterations = None  # run indefinitely by default
 
@@ -36,49 +36,52 @@ class DataCollector:
         datas = dict()
 
 		## inicio while :
-        while:
-            start_time = time.time()
+        while (1):
+            try:
+                start_time = time.time()
 
-            statusRF24 = bus.read_byte_data(address, 16)
-            if statusRF24 != statusRF24old
-                statusRF24old = statusRF24
-                save = True
-                RadioPacket = unpack('BcBlfL', statusRF24)
-                datas['FromRadioId'] = RadioPacket[0]
-                datas['DataType'] = RadioPacket[1]
-                datas['InputNumber'] = RadioPacket[2]
-                datas['RadioDataLong'] = RadioPacket[3]
-                datas['RadioDataFloat'] = RadioPacket[4]
-                datas['FailedTxCount'] = RadioPacket[5]
+                statusRF24 = bus.read_byte_data(address, 16)
+                if statusRF24 != statusRF24old:
+                    statusRF24old = statusRF24
+                    save = True
+                    RadioPacket = unpack('BcBlfL', statusRF24)
+                    datas['FromRadioId'] = RadioPacket[0]
+                    datas['DataType'] = RadioPacket[1]
+                    datas['InputNumber'] = RadioPacket[2]
+                    datas['RadioDataLong'] = RadioPacket[3]
+                    datas['RadioDataFloat'] = RadioPacket[4]
+                    datas['FailedTxCount'] = RadioPacket[5]
 
 			
-            datas['ReadTime'] =  time.time() - start_time
+                datas['ReadTime'] =  time.time() - start_time
 
-            if save:
-                save = False
-                json_body = [
-                    {
-                        'measurement': 'nrfliteLog',
-                        'tags': {
-                            'id': nrflite_id,
-                        },
-                        'time': t_str,
-                        'fields': datas[nrflite_id]
-                    }
-                    for nrflite_id in datas
-                ]
-                if len(json_body) > 0:
-                    try:
-                        self.influx_client.write_points(json_body)
-                        log.info(t_str + ' Data written for %d inputs.' % len(json_body))
-                    except Exception as e:
-                        log.error('Data not written!')
-                        log.error(e)
-                        raise
-                else:
-                    log.warning(t_str, 'No data sent.')
-			## delay 10 ms between read inputs
-            time.sleep(0.01)
+                if save:
+                    save = False
+                    json_body = [
+                        {
+                            'measurement': 'nrfliteLog',
+                            'tags': {
+                                'id': nrflite_id,
+                            },
+                            'time': t_str,
+                            'fields': datas[nrflite_id]
+                        }
+                        for nrflite_id in datas
+                    ]
+                    if len(json_body) > 0:
+                        try:
+                            self.influx_client.write_points(json_body)
+                            log.info(t_str + ' Data written for %d inputs.' % len(json_body))
+                        except Exception as e:
+                            log.error('Data not written!')
+                            log.error(e)
+                            raise
+                    else:
+                        log.warning(t_str, 'No data sent.')
+            except:
+                pass
+			## delay 100 ms between read inputs
+            time.sleep(0.1)
 
 
 if __name__ == '__main__':
