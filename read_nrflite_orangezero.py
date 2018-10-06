@@ -13,8 +13,6 @@ from smbus2 import SMBus
 
 bus = SMBus(1)  # Puerto i2c-1 auxiliar de la Orange Pi Zero H2
 address = 0x05        # Dirección por defecto esclavo 10 en decimal
-#channel = 100		  # 0-125 (2400 - 2525 MHz)
-#bitrate = 2		  # 2 => BITRATE2MBPS, 1 => BITRATE1MBPS, 0 = > BITRATE250KBPS
 
 # Change working dir to the same dir as this script
 os.chdir(sys.path[0])
@@ -28,58 +26,56 @@ class DataCollector:
         t_utc = datetime.utcnow()
         t_str = t_utc.isoformat() + 'Z'
 
-        # Config remote device
-        #bus.write_i2c_block_data(address, 'b', [bitrate, 'c', channel])
-        #time.sleep(10)                    #delay ten seconds to reboot remote device
-
         save = False
         datas = dict()
+        statusRF24old = 0
 
 		## inicio while :
         while (1):
-            try:
-                start_time = time.time()
+ ##           try:
+            start_time = time.time()
 
-                statusRF24 = bus.read_byte_data(address, 16)
-                if statusRF24 != statusRF24old:
-                    statusRF24old = statusRF24
-                    save = True
-                    RadioPacket = unpack('BcBlfL', statusRF24)
-                    datas['FromRadioId'] = RadioPacket[0]
-                    datas['DataType'] = RadioPacket[1]
-                    datas['InputNumber'] = RadioPacket[2]
-                    datas['RadioDataLong'] = RadioPacket[3]
-                    datas['RadioDataFloat'] = RadioPacket[4]
-                    datas['FailedTxCount'] = RadioPacket[5]
+            statusRF24 = bus.read_byte_data(address, 16)
+            if statusRF24 != statusRF24old:
+                statusRF24old = statusRF24
+                save = True
+                RadioPacket = unpack('BcBlfL', statusRF24)
+                datas['FromRadioId'] = RadioPacket[0]
+                datas['DataType'] = RadioPacket[1]
+                datas['InputNumber'] = RadioPacket[2]
+                datas['RadioDataLong'] = RadioPacket[3]
+                datas['RadioDataFloat'] = RadioPacket[4]
+                datas['FailedTxCount'] = RadioPacket[5]
 
 			
-                datas['ReadTime'] =  time.time() - start_time
+            datas['ReadTime'] =  time.time() - start_time
 
-                if save:
-                    save = False
-                    json_body = [
-                        {
-                            'measurement': 'nrfliteLog',
-                            'tags': {
-                                'id': nrflite_id,
-                            },
-                            'time': t_str,
-                            'fields': datas[nrflite_id]
-                        }
-                        for nrflite_id in datas
-                    ]
-                    if len(json_body) > 0:
-                        try:
-                            self.influx_client.write_points(json_body)
-                            log.info(t_str + ' Data written for %d inputs.' % len(json_body))
-                        except Exception as e:
-                            log.error('Data not written!')
-                            log.error(e)
-                            raise
-                    else:
-                        log.warning(t_str, 'No data sent.')
-            except:
-                pass
+            if save:
+                save = False
+                json_body = [
+                    {
+                        'measurement': 'nrfliteLog',
+                        'tags': {
+                            'id': nrflite_id,
+                        },
+                        'time': t_str,
+                        'fields': datas[nrflite_id]
+                    }
+                    for nrflite_id in datas
+                ]
+                if len(json_body) > 0:
+                    try:
+                        self.influx_client.write_points(json_body)
+                        log.info(t_str + ' Data written for %d inputs.' % len(json_body))
+                    except Exception as e:
+                        log.error('Data not written!')
+                        log.error(e)
+                        raise
+                else:
+                    log.warning(t_str, 'No data sent.')
+##            except:
+##                log.error('Remote not found!')
+##                pass
 			## delay 100 ms between read inputs
             time.sleep(0.1)
 
