@@ -6,19 +6,15 @@
 #include <TinyWire.h>  //https://github.com/lucullusTheOnly/TinyWire
 #include <avr/wdt.h>
 #include <NRFLite.h>
-#include <EEPROM.h>
+//#include <EEPROM.h>
 // 2-Pin Hookup Guide on https://github.com/dparson55/NRFLite
 #define RADIO_ID 0              // Our radio's id node.  The transmitter will send to this id.
 #define wchannelDef 100 // por defecto canal 100
 #define wbaudratelDef 2 // por defecto 2 mbps
 #define PIN_RADIO_MOMI 4
 #define PIN_RADIO_SCK 3
-// Led status
-#define led 1
-// Definimos tiempo led estatus
-#define tiempoEstatus 1000
 // I2C address
-#define own_address 10
+#define own_address 5
 // inits address in the eeprom to save/load config
 #define wchannel_address 30 // 1 byte (30)
 #define wbaudratel_address 35 // 1 byte (35)
@@ -41,6 +37,8 @@ byte wbaudrate = 2;              // 2 => BITRATE2MBPS, 1 => BITRATE1MBPS, 0 = > 
 
 unsigned long previousMillisEstatus = 0;
 
+boolean receive = false;
+
 void setup()
 {
   // config TinyWire library for I2C slave functionality
@@ -48,11 +46,11 @@ void setup()
   // register a handler function in case of a request from a master
   TinyWire.onRequest(onI2CRequest);
   // sets callback for the event of a slave receive
-  TinyWire.onReceive( onI2CReceive );
+  //  TinyWire.onReceive( onI2CReceive );
 
   // Cargamos configuración de la eeprom, si hay
-  EEPROM.get(wchannel_address, wchannel);
-  EEPROM.get(wbaudratel_address, wbaudrate);
+  //  EEPROM.get(wchannel_address, wchannel);
+  //  EEPROM.get(wbaudratel_address, wbaudrate);
 
   if (wbaudrate == 2) {
     if (!_radio.initTwoPin(RADIO_ID, PIN_RADIO_MOMI, PIN_RADIO_SCK, NRFLite::BITRATE2MBPS, wchannel))
@@ -77,31 +75,24 @@ void setup()
 
 void loop()
 {
-  // Actualizar tiempo encendido.
-  unsigned long currentMillis = millis();
-
-  // Comprobar si millis() se ha puesto a cero tras 50 días, en caso afirmativo ajustar buffers de tiempo.
-  if (currentMillis < previousMillisEstatus)
-  {
-    previousMillisEstatus = 0;
-  }
 
   // comprobamos si hay algúna comunicacion pendiente vía radio
-  while (_radio.hasData())
-  {
-    _radio.readData(&_radioData); // Note how '&' must be placed in front of the variable name.
+  if (receive) {
+    while (_radio.hasData())
+    {
+      _radio.readData(&_radioData); // Note how '&' must be placed in front of the variable name.
+      receive = false;
+    }
   }
 
-  if (currentMillis - previousMillisEstatus > tiempoEstatus) {
-    previousMillisEstatus = currentMillis;
-    digitalWrite(led, !digitalRead(led));
-  }
 }
 
-void reboot() {
+/*
+  void reboot() {
   wdt_enable(5);
   while (1);
-}
+  }
+*/
 
 // Request Event handler function
 void onI2CRequest() {
@@ -112,21 +103,24 @@ void onI2CRequest() {
   TinyWire.send(byte(_radioData.RadioDataLong >> 16));            // 5rd byte
   TinyWire.send(byte(_radioData.RadioDataLong >> 8));             // 6st byte
   TinyWire.send(byte(_radioData.RadioDataLong));                  // 7nd byte
-  TinyWire.send(byte(_radioData.RadioDataFloat >> 24));           // 8nd byte
-  TinyWire.send(byte(_radioData.RadioDataFloat >> 16));           // 9nd byte
-  TinyWire.send(byte(_radioData.RadioDataFloat >> 8));            // 10st byte
-  TinyWire.send(byte(_radioData.RadioDataFloat));                 // 11nd byte
+  long FloatToLong = long(_radioData.RadioDataFloat);
+  TinyWire.send(byte(FloatToLong >> 24));                         // 8nd byte
+  TinyWire.send(byte(FloatToLong >> 16));                         // 9nd byte
+  TinyWire.send(byte(FloatToLong >> 8));                          // 10st byte
+  TinyWire.send(byte(FloatToLong));                               // 11nd byte
   TinyWire.send(byte(_radioData.FailedTxCount >> 24));            // 12st byte
   TinyWire.send(byte(_radioData.FailedTxCount >> 16));            // 13nd byte
   TinyWire.send(byte(_radioData.FailedTxCount >> 8));             // 14nd byte
   TinyWire.send(byte(_radioData.FailedTxCount));                  // 15th byte
+  receive = true;
 }
 
 /*
   I2C Slave Receive Callback:
   Note that this function is called from an interrupt routine and shouldn't take long to execute
 */
-void onI2CReceive(int howMany) {
+/*
+  void onI2CReceive(int howMany) {
   char bufb;    //buffer donde almacenar valor baudrate 0-2
   char bufc; //buffer donde almacenar valor canal 0-125
   // loops, until all received bytes are read
@@ -146,5 +140,6 @@ void onI2CReceive(int howMany) {
     }
   }
   reboot();
-}
+  }
+*/
 
