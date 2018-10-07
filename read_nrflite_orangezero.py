@@ -76,6 +76,7 @@ class DataCollector:
                     try:
                         self.influx_client.write_points(json_body)
                         log.info(t_str + ' Data written for %d inputs.' % len(json_body))
+                        log.info(json_body)
                     except Exception as e:
                         log.error('Data not written!')
                         log.error(e)
