@@ -2,6 +2,7 @@
 
 from influxdb import InfluxDBClient
 from datetime import datetime, timedelta
+from struct import unpack
 from os import path
 import sys
 import os
@@ -32,23 +33,25 @@ class DataCollector:
 
 		## inicio while :
         while (1):
+		
+            datas[0] = dict()
+			
  ##           try:
             start_time = time.time()
 
-            statusRF24 = bus.read_byte_data(address, 16)
+            statusRF24 = bus.read_i2c_block_data(address,0,15)
+
             if statusRF24 != statusRF24old:
                 statusRF24old = statusRF24
                 save = True
-                RadioPacket = unpack('BcBlfL', statusRF24)
-                datas['FromRadioId'] = RadioPacket[0]
-                datas['DataType'] = RadioPacket[1]
-                datas['InputNumber'] = RadioPacket[2]
-                datas['RadioDataLong'] = RadioPacket[3]
-                datas['RadioDataFloat'] = RadioPacket[4]
-                datas['FailedTxCount'] = RadioPacket[5]
-
+                datas[0]['FromRadioId'] = statusRF24[0]
+                datas[0]['DataType'] = chr(statusRF24[1])
+                datas[0]['InputNumber'] = statusRF24[2]
+                datas[0]['RadioDataLong'] = (statusRF24[3] <<24) + (statusRF24[4] <<16) + (statusRF24[5] <<8) + statusRF24[6];
+                datas[0]['RadioDataFloat'] = float((statusRF24[8] <<24) + (statusRF24[9] <<16) + (statusRF24[10] <<8) + statusRF24[11]);
+                datas[0]['FailedTxCount'] = (statusRF24[11] <<24) + (statusRF24[12] <<16) + (statusRF24[13] <<8) + statusRF24[14];
 			
-            datas['ReadTime'] =  time.time() - start_time
+            datas[0]['ReadTime'] =  time.time() - start_time
 
             if save:
                 save = False
