@@ -35,7 +35,7 @@ RadioPacket _radioData;
 byte wchannel = 100;             // 0-125 (2400 - 2525 MHz)
 byte wbaudrate = 2;              // 2 => BITRATE2MBPS, 1 => BITRATE1MBPS, 0 = > BITRATE250KBPS
 
-volatile byte* FloatPtr;
+byte newData = 0;
 
 unsigned long previousMillisEstatus = 0;
 
@@ -80,10 +80,11 @@ void loop()
 
   // comprobamos si hay algúna comunicacion pendiente vía radio
   if (receive) {
-    while (_radio.hasData())
+    if (_radio.hasData())
     {
       _radio.readData(&_radioData); // Note how '&' must be placed in front of the variable name.
       receive = false;
+      newData++;
     }
   }
 
@@ -106,7 +107,7 @@ void onI2CRequest() {
   TinyWire.send(byte(_radioData.RadioDataLong >> 8));             // 6st byte
   TinyWire.send(byte(_radioData.RadioDataLong));                  // 7nd byte
   
-  FloatPtr = (byte*) &_radioData.RadioDataFloat;
+  volatile byte* FloatPtr = (byte*) &_radioData.RadioDataFloat;
   TinyWire.send(FloatPtr[0]);                                     // 8nd byte
   TinyWire.send(FloatPtr[1]);                                     // 9nd byte
   TinyWire.send(FloatPtr[2]);                                     // 10st byte
@@ -121,6 +122,7 @@ void onI2CRequest() {
   TinyWire.send(byte(_radioData.FailedTxCount >> 16));            // 13nd byte
   TinyWire.send(byte(_radioData.FailedTxCount >> 8));             // 14nd byte
   TinyWire.send(byte(_radioData.FailedTxCount));                  // 15th byte
+  TinyWire.send(newData);                                         // 16th byte
   receive = true;
 }
 
