@@ -23,8 +23,6 @@ class DataCollector:
         self.max_iterations = None  # run indefinitely by default
 
     def collect_and_store(self):
-        t_utc = datetime.utcnow()
-        t_str = t_utc.isoformat() + 'Z'
 
         save = False
         datas = dict()
@@ -52,6 +50,8 @@ class DataCollector:
 
             if save:
                 save = False
+                t_utc = datetime.utcnow()
+                t_str = t_utc.isoformat() + 'Z'
                 json_body = [
                     {
                         'measurement': 'nrfliteLog',
@@ -69,6 +69,7 @@ class DataCollector:
                         }
                     }
                 ]
+#                print(json_body)
                 if len(json_body) > 0:
                     try:
                         self.influx_client.write_points(json_body)
