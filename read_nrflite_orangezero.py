@@ -37,13 +37,16 @@ class DataCollector:
             statusRF24 = bus.read_i2c_block_data(address,0,15)
 
             if statusRF24 != statusRF24old:
+                print(statusRF24)
                 statusRF24old = statusRF24
                 save = True
                 datas['FromRadioId'] = statusRF24[0]
                 datas['DataType'] = chr(statusRF24[1])
                 datas['InputNumber'] = statusRF24[2]
                 datas['RadioDataLong'] = (statusRF24[3] <<24) + (statusRF24[4] <<16) + (statusRF24[5] <<8) + statusRF24[6];
-                datas['RadioDataFloat'] = float((statusRF24[8] <<24) + (statusRF24[9] <<16) + (statusRF24[10] <<8) + statusRF24[11]);
+                LongToFloat = (statusRF24[7] <<24) + (statusRF24[8] <<16) + (statusRF24[9] <<8) + statusRF24[10]
+                print(LongToFloat)
+                datas['RadioDataFloat'] = float(LongToFloat);
                 datas['FailedTxCount'] = (statusRF24[11] <<24) + (statusRF24[12] <<16) + (statusRF24[13] <<8) + statusRF24[14];
 			
             datas['ReadTime'] =  time.time() - start_time
@@ -69,7 +72,7 @@ class DataCollector:
                         }
                     }
                 ]
-#                print(json_body)
+                print(json_body)
                 if len(json_body) > 0:
                     try:
                         self.influx_client.write_points(json_body)
