@@ -2,7 +2,6 @@
 
 from influxdb import InfluxDBClient
 from datetime import datetime, timedelta
-from struct import unpack
 from os import path
 import sys
 import os
@@ -33,8 +32,6 @@ class DataCollector:
 
 		## inicio while :
         while (1):
-		
-            datas[0] = dict()
 			
  ##           try:
             start_time = time.time()
@@ -44,14 +41,14 @@ class DataCollector:
             if statusRF24 != statusRF24old:
                 statusRF24old = statusRF24
                 save = True
-                datas[0]['FromRadioId'] = statusRF24[0]
-                datas[0]['DataType'] = chr(statusRF24[1])
-                datas[0]['InputNumber'] = statusRF24[2]
-                datas[0]['RadioDataLong'] = (statusRF24[3] <<24) + (statusRF24[4] <<16) + (statusRF24[5] <<8) + statusRF24[6];
-                datas[0]['RadioDataFloat'] = float((statusRF24[8] <<24) + (statusRF24[9] <<16) + (statusRF24[10] <<8) + statusRF24[11]);
-                datas[0]['FailedTxCount'] = (statusRF24[11] <<24) + (statusRF24[12] <<16) + (statusRF24[13] <<8) + statusRF24[14];
+                datas['FromRadioId'] = statusRF24[0]
+                datas['DataType'] = chr(statusRF24[1])
+                datas['InputNumber'] = statusRF24[2]
+                datas['RadioDataLong'] = (statusRF24[3] <<24) + (statusRF24[4] <<16) + (statusRF24[5] <<8) + statusRF24[6];
+                datas['RadioDataFloat'] = float((statusRF24[8] <<24) + (statusRF24[9] <<16) + (statusRF24[10] <<8) + statusRF24[11]);
+                datas['FailedTxCount'] = (statusRF24[11] <<24) + (statusRF24[12] <<16) + (statusRF24[13] <<8) + statusRF24[14];
 			
-            datas[0]['ReadTime'] =  time.time() - start_time
+            datas['ReadTime'] =  time.time() - start_time
 
             if save:
                 save = False
@@ -59,12 +56,18 @@ class DataCollector:
                     {
                         'measurement': 'nrfliteLog',
                         'tags': {
-                            'id': nrflite_id,
+                            'FromRadioId': datas['FromRadioId'],
+                            'DataType': datas['DataType'],
+                            'InputNumber': datas['InputNumber'],
                         },
                         'time': t_str,
-                        'fields': datas[nrflite_id]
+                        'fields': {
+                            'ReadTime': datas['ReadTime'],
+                            'RadioDataLong': datas['RadioDataLong'],
+                            'RadioDataFloat': datas['RadioDataFloat'],
+                            'FailedTxCount': datas['FailedTxCount'],
+                        }
                     }
-                    for nrflite_id in datas
                 ]
                 if len(json_body) > 0:
                     try:
