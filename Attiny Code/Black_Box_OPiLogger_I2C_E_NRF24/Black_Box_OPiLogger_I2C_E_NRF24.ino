@@ -35,6 +35,8 @@ RadioPacket _radioData;
 byte wchannel = 100;             // 0-125 (2400 - 2525 MHz)
 byte wbaudrate = 2;              // 2 => BITRATE2MBPS, 1 => BITRATE1MBPS, 0 = > BITRATE250KBPS
 
+volatile byte* FloatPtr;
+
 unsigned long previousMillisEstatus = 0;
 
 boolean receive = false;
@@ -103,11 +105,18 @@ void onI2CRequest() {
   TinyWire.send(byte(_radioData.RadioDataLong >> 16));            // 5rd byte
   TinyWire.send(byte(_radioData.RadioDataLong >> 8));             // 6st byte
   TinyWire.send(byte(_radioData.RadioDataLong));                  // 7nd byte
-  long FloatToLong = long(_radioData.RadioDataFloat);
-  TinyWire.send(byte(FloatToLong >> 24));                         // 8nd byte
-  TinyWire.send(byte(FloatToLong >> 16));                         // 9nd byte
-  TinyWire.send(byte(FloatToLong >> 8));                          // 10st byte
-  TinyWire.send(byte(FloatToLong));                               // 11nd byte
+  
+  FloatPtr = (byte*) &_radioData.RadioDataFloat;
+  TinyWire.send(FloatPtr[0]);                                     // 8nd byte
+  TinyWire.send(FloatPtr[1]);                                     // 9nd byte
+  TinyWire.send(FloatPtr[2]);                                     // 10st byte
+  TinyWire.send(FloatPtr[3]);                                     // 11nd byte
+  /*
+    TinyWire.send(byte(_radioData.RadioDataFloat >> 24));                         // 8nd byte
+    TinyWire.send(byte(_radioData.RadioDataFloat >> 16));                         // 9nd byte
+    TinyWire.send(byte(_radioData.RadioDataFloat >> 8));                          // 10st byte
+    TinyWire.send(byte(_radioData.RadioDataFloat));                               // 11nd byte
+  */
   TinyWire.send(byte(_radioData.FailedTxCount >> 24));            // 12st byte
   TinyWire.send(byte(_radioData.FailedTxCount >> 16));            // 13nd byte
   TinyWire.send(byte(_radioData.FailedTxCount >> 8));             // 14nd byte
