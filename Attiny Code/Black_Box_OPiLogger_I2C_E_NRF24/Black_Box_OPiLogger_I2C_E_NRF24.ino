@@ -13,12 +13,8 @@
 #define wbaudratelDef 2 // por defecto 2 mbps
 #define PIN_RADIO_MOMI 4
 #define PIN_RADIO_SCK 3
-// Led status
-#define led 1
-// Definimos tiempo led estatus
-#define tiempoEstatus 1000
 // I2C address
-#define own_address 10
+#define own_address 5
 // inits address in the eeprom to save/load config
 #define wchannel_address 30 // 1 byte (30)
 #define wbaudratel_address 35 // 1 byte (35)
@@ -39,7 +35,11 @@ RadioPacket _radioData;
 byte wchannel = 100;             // 0-125 (2400 - 2525 MHz)
 byte wbaudrate = 2;              // 2 => BITRATE2MBPS, 1 => BITRATE1MBPS, 0 = > BITRATE250KBPS
 
+byte newData = 0;
+
 unsigned long previousMillisEstatus = 0;
+
+boolean receive = false;
 
 void setup()
 {
@@ -48,11 +48,11 @@ void setup()
   // register a handler function in case of a request from a master
   TinyWire.onRequest(onI2CRequest);
   // sets callback for the event of a slave receive
-  TinyWire.onReceive( onI2CReceive );
+  //  TinyWire.onReceive( onI2CReceive );
 
   // Cargamos configuración de la eeprom, si hay
-  EEPROM.get(wchannel_address, wchannel);
-  EEPROM.get(wbaudratel_address, wbaudrate);
+    EEPROM.get(wchannel_address, wchannel);
+    EEPROM.get(wbaudratel_address, wbaudrate);
 
   if (wbaudrate == 2) {
     if (!_radio.initTwoPin(RADIO_ID, PIN_RADIO_MOMI, PIN_RADIO_SCK, NRFLite::BITRATE2MBPS, wchannel))
@@ -77,31 +77,24 @@ void setup()
 
 void loop()
 {
-  // Actualizar tiempo encendido.
-  unsigned long currentMillis = millis();
-
-  // Comprobar si millis() se ha puesto a cero tras 50 días, en caso afirmativo ajustar buffers de tiempo.
-  if (currentMillis < previousMillisEstatus)
-  {
-    previousMillisEstatus = 0;
-  }
 
   // comprobamos si hay algúna comunicacion pendiente vía radio
-  while (_radio.hasData())
-  {
-    _radio.readData(&_radioData); // Note how '&' must be placed in front of the variable name.
+  if (receive) {
+    if (_radio.hasData())
+    {
+      _radio.readData(&_radioData); // Note how '&' must be placed in front of the variable name.
+      receive = false;
+      newData++;
+    }
   }
 
-  if (currentMillis - previousMillisEstatus > tiempoEstatus) {
-    previousMillisEstatus = currentMillis;
-    digitalWrite(led, !digitalRead(led));
-  }
 }
 
-void reboot() {
+  void reboot() {
   wdt_enable(5);
   while (1);
-}
+  }
+
 
 // Request Event handler function
 void onI2CRequest() {
@@ -112,23 +105,35 @@ void onI2CRequest() {
   TinyWire.send(byte(_radioData.RadioDataLong >> 16));            // 5rd byte
   TinyWire.send(byte(_radioData.RadioDataLong >> 8));             // 6st byte
   TinyWire.send(byte(_radioData.RadioDataLong));                  // 7nd byte
-  TinyWire.send(byte(_radioData.RadioDataFloat >> 24));           // 8nd byte
-  TinyWire.send(byte(_radioData.RadioDataFloat >> 16));           // 9nd byte
-  TinyWire.send(byte(_radioData.RadioDataFloat >> 8));            // 10st byte
-  TinyWire.send(byte(_radioData.RadioDataFloat));                 // 11nd byte
+
+  volatile byte* FloatPtr = (byte*) &_radioData.RadioDataFloat;
+  TinyWire.send(FloatPtr[0]);                                     // 8nd byte
+  TinyWire.send(FloatPtr[1]);                                     // 9nd byte
+  TinyWire.send(FloatPtr[2]);                                     // 10st byte
+  TinyWire.send(FloatPtr[3]);                                     // 11nd byte
+  /*
+    TinyWire.send(byte(_radioData.RadioDataFloat >> 24));                         // 8nd byte
+    TinyWire.send(byte(_radioData.RadioDataFloat >> 16));                         // 9nd byte
+    TinyWire.send(byte(_radioData.RadioDataFloat >> 8));                          // 10st byte
+    TinyWire.send(byte(_radioData.RadioDataFloat));                               // 11nd byte
+  */
   TinyWire.send(byte(_radioData.FailedTxCount >> 24));            // 12st byte
   TinyWire.send(byte(_radioData.FailedTxCount >> 16));            // 13nd byte
   TinyWire.send(byte(_radioData.FailedTxCount >> 8));             // 14nd byte
   TinyWire.send(byte(_radioData.FailedTxCount));                  // 15th byte
+  TinyWire.send(newData);                                         // 16th byte
+  receive = true;
 }
 
 /*
   I2C Slave Receive Callback:
   Note that this function is called from an interrupt routine and shouldn't take long to execute
 */
+
 void onI2CReceive(int howMany) {
   char bufb;    //buffer donde almacenar valor baudrate 0-2
   char bufc; //buffer donde almacenar valor canal 0-125
+  boolean NeedReboot = false;
   // loops, until all received bytes are read
   while (TinyWire.available() > 0) {
     char data = TinyWire.read();
@@ -137,14 +142,18 @@ void onI2CReceive(int howMany) {
       bufb = TinyWire.read();
       wbaudrate = atoi(bufb);
       EEPROM.update(wbaudratel_address, wbaudrate);
+      NeedReboot = true;
     }
     // Si 'c' es recibido leer los 3 siguientes siguiente valores y almacenarlo en buffer
     if (data == 'c') {
       bufc = TinyWire.read();
       wchannel = atoi(bufc);
       EEPROM.update(wchannel_address, wchannel);
+      NeedReboot = true;
     }
   }
-  reboot();
+  if (NeedReboot)
+    reboot();
 }
+
 
