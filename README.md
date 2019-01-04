@@ -41,7 +41,7 @@ Its been verified to work with a orange pi zero with a Attiny gateway into nrfli
     ```sh
     $ influx
     CREATE DATABASE db_nrf24
-    exit 
+    exit
     ```
 [*source](https://docs.influxdata.com/influxdb/v1.3/introduction/installation/)
 
@@ -58,7 +58,7 @@ Its been verified to work with a orange pi zero with a Attiny gateway into nrfli
     ```
 * Now install
     ```sh
-    $ sudo apt-get update && sudo apt-get install grafana 
+    $ sudo apt-get update && sudo apt-get install grafana
     ```
 * Start the service using systemd:
     ```sh
@@ -81,7 +81,7 @@ Its been verified to work with a orange pi zero with a Attiny gateway into nrfli
     ```
 * Run setup script (must be executed as root (sudo) if the application needs to be started from rc.local, see below)
     ```sh
-    $ cd Input-Logger-OrangeZero
+    $ cd nrf24-Logger-OrangeZero
 	$ sudo apt-get install python3-smbus
     $ sudo python3 setup.py install
     ```    
@@ -101,7 +101,7 @@ Its been verified to work with a orange pi zero with a Attiny gateway into nrfli
     ```
 * To run the python script at system startup. Add to following lines to the end of /etc/rc.local but before exit:
     ```sh
-    # Start Energy Meter Logger
-    /home/pi/energy-meter-logger/read_nrflite_orangezero.py > /var/log/nrflite-logger.log &
+    # Start nrf24 Logger
+    /home/pi/nrf24-Logger-OrangeZero/read_nrflite_orangezero.py > /var/log/nrflite-logger.log &
     ```
     Log with potential errors are found in /var/log/nrflite-logger.log
