@@ -7,8 +7,6 @@ setup(name='nrf24_logger',
       'and store in local database.',
       url='https://github.com/GuillermoElectrico/nrf24-Logger-OrangeZero',
       download_url='',
-      author='Samuel Vestlin',
-      author_email='samuel@elphy.se',
       platforms='Raspberry Pi',
       classifiers=[
         'Development Status :: 4 - Beta',
